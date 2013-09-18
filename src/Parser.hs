@@ -73,6 +73,7 @@ parseConst = do
         j <- pInt
         return $ Constr i j
 
+-- Gotta fix application
 parseApp :: Parser CoreExpr
 parseApp = chainl1 parseExpr (return App)
 
