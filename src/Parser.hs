@@ -43,10 +43,10 @@ pCase = do
 pAlter :: Parser CoreAlt
 pAlter = do
     i <- angles pInt
-    -- Gotta get variables in here
+    xs <- many identifier
     arrow
     e <- pExpr
-    return $ (i, [], e)
+    return $ (i, xs, e)
     <?> "Case"
 
 pLambda :: Parser CoreExpr
@@ -73,6 +73,7 @@ pLet = do
     reserved "in"
     ein <- pExpr
     return $ Let False defs ein
+    <?> "let"
 
 pLetRec :: Parser CoreExpr
 pLetRec = do
@@ -81,6 +82,7 @@ pLetRec = do
     reserved "in"
     ein <- pExpr
     return $ Let True defs ein -- Maybe add itself to defs at parsing level?
+    <?> "letrec"
 
 pFactor :: Parser CoreExpr
 pFactor = parens pExpr
@@ -90,9 +92,10 @@ pFactor = parens pExpr
     <|> pLet
     <|> pLetRec
     <|> pCase
+    <?> "factor"
 
 pTerm :: Parser CoreExpr
-pTerm = E.buildExpressionParser table pFactor
+pTerm = E.buildExpressionParser table pFactor <?> "term"
   where infixOp x = E.Infix (reservedOp x >> return (\e1 e2 -> App (App (Var x) e1) e2))
         table = 
             [ [ infixOp "*" E.AssocLeft 
@@ -104,6 +107,7 @@ pTerm = E.buildExpressionParser table pFactor
 
 pExpr :: Parser CoreExpr
 pExpr = foldl1 App <$> many1 pTerm
+    <?> "expr"
 
 parseExpr :: String -> CoreExpr
 parseExpr t = case parse (allOf pExpr) "" t of
