@@ -10,14 +10,16 @@ import qualified Text.Parsec.Expr as E
 import Lexer
 import AST
 
+-- TODO Add toplevel combinator definitions
+
 pInt :: Parser Int
-pInt = fromInteger <$> integer
+pInt = fromInteger <$> integer <?> "Int"
 
 pVar :: Parser CoreExpr
-pVar = Var <$> identifier
+pVar = Var <$> identifier <?> "Var"
 
 pNum :: Parser CoreExpr
-pNum = Num <$> pInt
+pNum = Num <$> pInt <?> "Num"
 
 pConst :: Parser CoreExpr
 pConst = do
@@ -27,6 +29,7 @@ pConst = do
         comma
         j <- pInt
         return $ Constr i j
+    <?> "Constructor"
 
 pCase :: Parser CoreExpr
 pCase = do
@@ -35,28 +38,35 @@ pCase = do
     reserved "of"
     alts <- pAlter `sepBy1` semi
     return $ Case e alts
+    <?> "Case"
 
-pAlter :: Parser (CoreAlt)
+pAlter :: Parser CoreAlt
 pAlter = do
     i <- angles pInt
     -- Gotta get variables in here
     arrow
     e <- pExpr
     return $ (i, [], e)
+    <?> "Case"
 
+pLambda :: Parser CoreExpr
 pLambda = do
     lambda
     xs <- many1 identifier -- Convert to many idents
     dot
     e <- pExpr
     return $ Lam xs e
+    <?> "Lambda"
 
+pDef :: Parser (Name, CoreExpr)
 pDef = do
     x <- identifier
     equals
     e <- pExpr
     return (x, e)
+    <?> "Definition"
 
+pLet :: Parser CoreExpr
 pLet = do
     reserved "let"
     defs <- pDef `sepBy1` semi
@@ -64,6 +74,7 @@ pLet = do
     ein <- pExpr
     return $ Let False defs ein
 
+pLetRec :: Parser CoreExpr
 pLetRec = do
     reserved "letrec"
     defs <- pDef `sepBy1` semi
@@ -91,6 +102,7 @@ pTerm = E.buildExpressionParser table pFactor
               ]
             ]
 
+pExpr :: Parser CoreExpr
 pExpr = foldl1 App <$> many1 pTerm
 
 parseExpr :: String -> CoreExpr
