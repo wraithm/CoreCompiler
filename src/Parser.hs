@@ -1,71 +1,28 @@
 module Parser where
 
-import Control.Applicative ((<$>),(<*>))
+-- import Control.Applicative ((<$>),(<*>))
+import Control.Applicative ((<$>))
 
 import Text.Parsec
-import Text.Parsec.Char
+-- import Text.Parsec.Char
 import Text.Parsec.Combinator
 import Text.Parsec.String (Parser)
-import Text.Parsec.Language (emptyDef)
-import qualified Text.Parsec.Token as T
+import qualified Text.Parsec.Expr as E
 
+import Lexer
 import AST
 
-coreDef = emptyDef
-    { T.commentStart    = "{-"
-    , T.commentEnd      = "-}"
-    , T.nestedComments  = True
-    , T.identStart      = letter
-    , T.identLetter     = alphaNum <|> oneOf "_'"
-    , T.opStart         = T.opLetter coreDef
-    , T.opLetter        = oneOf "=+/*-~><&|\\"
-    , T.reservedNames   = 
-        [ "case"
-        , "of"
-        , "let"
-        , "in"
-        , "letrec"
-        , "Pack"
-        ]
-    }
-
-lexer = T.makeTokenParser coreDef
-
-parens      = T.parens lexer
-braces      = T.braces lexer
-brackets    = T.brackets lexer
-angles      = T.angles lexer
-semi        = T.semi lexer
-comma       = T.comma lexer
-identifier  = T.identifier lexer
-reserved    = T.reserved lexer
-integer     = T.integer lexer
-strLiteral  = T.stringLiteral lexer
-operator    = T.operator lexer
-reservedOp  = T.reservedOp lexer
-whitespace  = T.whiteSpace lexer
-dot         = T.dot lexer
-
-lambda = reservedOp "\\"
-equals = reservedOp "="
-arrow = reservedOp "->"
-
+pInt :: Parser Int
 pInt = fromInteger <$> integer
 
---parseVar :: Parser Expr
-parseVar = Var <$> identifier
+pVar :: Parser CoreExpr
+pVar = Var <$> identifier
 
-parseInt = Num <$> pInt
+pNum :: Parser CoreExpr
+pNum = Num <$> pInt
 
---parseOp :: Parser Expr
-parseOp = do
-    e1 <- parseExpr
-    opName <- operator
-    e2 <- parseExpr
-    return $ App (App (Var opName) e1) e2
-
---parseConst :: Parser Expr
-parseConst = do
+pConst :: Parser CoreExpr
+pConst = do
     reserved "Pack"
     braces $ do
         i <- pInt
@@ -73,28 +30,72 @@ parseConst = do
         j <- pInt
         return $ Constr i j
 
--- Gotta fix application
-parseApp :: Parser CoreExpr
-parseApp = chainl1 parseExpr (return App)
-
-parseCase = do
+pCase :: Parser CoreExpr
+pCase = do
     reserved "case"
-    e <- parseExpr
+    e <- pExpr
     reserved "of"
-    alts <- parseAlter `sepBy1` semi
+    alts <- pAlter `sepBy1` semi
     return $ Case e alts
 
-parseAlter :: Parser (CoreAlt)
-parseAlter = do
+pAlter :: Parser (CoreAlt)
+pAlter = do
     i <- angles pInt
+    -- Gotta get variables in here
     arrow
-    e <- parseExpr
+    e <- pExpr
     return $ (i, [], e)
 
-parseExpr :: Parser (CoreExpr)
-parseExpr = try (parens parseExpr)
-    <|> try parseApp
-    <|> try parseVar
-    <|> try parseInt
-    <|> try parseOp
-    <|> try parseConst
+pLambda = do
+    lambda
+    xs <- many1 identifier -- Convert to many idents
+    dot
+    e <- pExpr
+    return $ Lam xs e
+
+pDef = do
+    x <- identifier
+    equals
+    e <- pExpr
+    return (x, e)
+
+pLet = do
+    reserved "let"
+    defs <- pDef `sepBy1` semi
+    reserved "in"
+    ein <- pExpr
+    return $ Let False defs ein
+
+pLetRec = do
+    reserved "letrec"
+    defs <- pDef `sepBy1` semi
+    reserved "in"
+    ein <- pExpr
+    return $ Let True defs ein -- Maybe add itself to defs at parsing level?
+
+pFactor :: Parser CoreExpr
+pFactor = parens pExpr
+    <|> pVar
+    <|> pNum
+    <|> pLambda
+    <|> pLet
+    <|> pLetRec
+    <|> pCase
+
+pTerm :: Parser CoreExpr
+pTerm = E.buildExpressionParser table pFactor
+  where infixOp x = E.Infix (reservedOp x >> return (\e1 e2 -> App (App (Var x) e1) e2))
+        table = 
+            [ [ infixOp "*" E.AssocLeft 
+              ]
+            , [ infixOp "+" E.AssocLeft
+              , infixOp "-" E.AssocLeft
+              ]
+            ]
+
+pExpr = foldl1 App <$> many1 pTerm
+
+parseExpr :: String -> CoreExpr
+parseExpr t = case parse (allOf pExpr) "" t of
+    Left err -> error $ show err
+    Right ast -> ast
