@@ -1,10 +1,8 @@
 module Parser where
 
--- import Control.Applicative ((<$>),(<*>))
 import Control.Applicative ((<$>))
 
 import Text.Parsec
--- import Text.Parsec.Char
 import Text.Parsec.Combinator
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Expr as E

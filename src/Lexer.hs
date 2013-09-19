@@ -9,6 +9,7 @@ import qualified Text.Parsec.Token as T
 coreDef = emptyDef
     { T.commentStart    = "{-"
     , T.commentEnd      = "-}"
+    , T.commentLine     = "--"
     , T.nestedComments  = True
     , T.identStart      = letter
     , T.identLetter     = alphaNum <|> oneOf "_'"
