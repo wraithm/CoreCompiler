@@ -10,7 +10,19 @@ import qualified Text.Parsec.Expr as E
 import Lexer
 import AST
 
--- TODO Add toplevel combinator definitions
+parseProgram :: String -> CoreProgram
+parseProgram t = case parse (allOf (many1 pDefn)) "" t of
+    Left err -> error $ show err
+    Right defs -> defs
+
+pDefn :: Parser CoreDefn
+pDefn = do
+     name <- identifier
+     args <- many identifier
+     equals
+     e <- pExpr
+     semi
+     return (name, args, e)
 
 pInt :: Parser Int
 pInt = fromInteger <$> integer <?> "Int"
