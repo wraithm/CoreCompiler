@@ -1,7 +1,6 @@
 module TiState where
 
-import qualified Data.Map.Lazy as M
-import Data.List (mapAccumL, foldl)
+import Data.List (mapAccumL)
 import Data.Monoid ((<>))
 import Data.Maybe (fromMaybe)
 
