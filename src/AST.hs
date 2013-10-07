@@ -1,5 +1,7 @@
 module AST where
 
+import Data.Maybe (fromMaybe)
+
 type Program a = [Defn a]
 type CoreProgram = Program Name
 
@@ -15,7 +17,7 @@ data Expr a = Var Name
     | Let IsRec [(a, Expr a)] (Expr a)
     | Case (Expr a) [Alter a]
     | Lam [a] (Expr a)
-    deriving (Show)
+    deriving Show
 
 type Name = String
 type IsRec = Bool
@@ -35,13 +37,16 @@ isAtomic (Var _) = True
 isAtomic (Num _) = True
 isAtomic _ = False
 
+-- Simple helper tool for list dictionaries
+findWithDefault x k = fromMaybe x . lookup k
+
 {-
 instance Show a => Show (Expr a) where
     show (Num n) = show n
     show (Var x) = x
     show (App e1 e2) = show e1 ++ " " ++ show e2
-    show (Let True defs inexp) = "let rec " ++ concatMap (\(x,e) -> show x ++ " = " ++ show e ++ "\n") defs ++ "\nin " ++ show inexp
-    show (Let False defs inexp) = "let " ++ concatMap (\(x,e) -> show x ++ " = " ++ show e ++ "\n") defs ++ "\nin " ++ show inexp
+    show (Let True defs inexp) = "let rec " ++ concatMap (\(x,e) -> show x ++ " = " ++ show e ++ "\n") defs ++ "in " ++ show inexp
+    show (Let False defs inexp) = "let " ++ concatMap (\(x,e) -> show x ++ " = " ++ show e ++ "\n") defs ++ "in " ++ show inexp
     show (Constr i j) = "Pack " ++ show i ++ " " ++ show j
     show e
         | isAtomic e = show e

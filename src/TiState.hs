@@ -2,16 +2,12 @@ module TiState where
 
 import Data.List (mapAccumL)
 import Data.Monoid ((<>))
-import Data.Maybe (fromMaybe)
 
 import AST
 import Heap
 import CorePrelude
 
 -- This is a simple template instantiation graph reducer
-
--- Simple helper tool for list dictionaries
-findWithDefault x k = fromMaybe x . lookup k
 
 data TiState = TiState
     { stack :: TiStack
