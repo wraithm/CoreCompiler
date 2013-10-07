@@ -1,7 +1,8 @@
 module TiState where
 
-import qualified Data.Map.Strict as M
-import Data.List (mapAccumL)
+import qualified Data.Map.Lazy as M
+import Data.List (mapAccumL, foldl)
+import Data.Monoid ((<>))
 
 import AST
 import Heap
@@ -15,9 +16,10 @@ data TiState = TiState
     , heap  :: TiHeap
     , globals :: TiGlobals
     , stats :: TiStats }
+    deriving Show
 
+data TiDump = TiDump deriving Show
 type TiStack = [Addr]
-data TiDump = TiDump
 type TiHeap = Heap Node
 type TiGlobals = M.Map Name Addr
 type TiStats = Int
@@ -25,6 +27,7 @@ type TiStats = Int
 data Node = NApp Addr Addr -- Application
     | NComb Name [Name] CoreExpr -- Combinator
     | NNum Int -- Numbers
+    deriving Show
 
 initialDump = TiDump
 
@@ -50,11 +53,8 @@ compile program = TiState
     initialGlobals = M.fromList gs
     addrOfMain = M.findWithDefault 0 "main" initialGlobals
 
--- TODO Implement object lookup from the heap
 tiFinal :: TiState -> Bool
-tiFinal (TiState [a] _ h _ _) = case M.lookup a (objects h) of
-    Just x -> isDataNode x
-    Nothing -> error "Could not find last address!"
+tiFinal (TiState [a] _ h _ _) = isDataNode $ hLookup h a
 tiFinal (TiState [] _ _ _ _) = error "Empty stack!"
 tiFinal _ = False
 
@@ -63,21 +63,47 @@ isDataNode (NNum _) = True
 isDataNode _ = False
 
 step :: TiState -> TiState
-step state@(TiState (s:_) _ h _ _) = case M.lookup s (objects h) of
-    Just x -> dispatch x
-    Nothing -> error "Could not find value on the stack!"
+step state@(TiState (s:_) _ h _ _) = dispatch $ hLookup h s
   where
     dispatch (NNum _) = error "Number applied as function!"
     dispatch (NApp a1 a2) = appStep state a1 a2
     dispatch (NComb comb args body) = cStep state comb args body
 
-    appStep state@(TiState s _ _ _ _) a1 a2 = state { stack = a1 : s }
+appStep state@(TiState s _ _ _ _) a1 _ = state { stack = a1 : s }
 
-    cStep _ _ _ _ = undefined
+cStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
+cStep (TiState s d h g st) name args body = TiState s' d h' g st
+    where
+    s' = resultAddr : drop (length args + 1) s
+    (h', resultAddr) = instantiate body h env
+    env = argBindings <> g
+    argBindings = mapZip args (getArgs h s)
+    mapZip xs ys = foldl (\a (k,v) -> M.insert k v a) M.empty (zip xs ys)
 
-eval state = 
-    state : rest
+getArgs h (s:st) = map getArg st
+    where getArg addr = let (NApp _ arg) = hLookup h addr in arg
+
+instantiate :: CoreExpr -> TiHeap -> M.Map Name Addr -> (TiHeap, Addr)
+instantiate (Num n) h env = alloc h (NNum n)
+instantiate (App e1 e2) h env = alloc h2 (NApp a1 a2)
+  where
+    (h1, a1) = instantiate e1 h env
+    (h2, a2) = instantiate e2 h1 env
+instantiate (Var v) h env = (h, M.findWithDefault err v env)
+    where err = error $ "Undefined name " ++ show v ++ " in " ++ show env
+instantiate (Constr tag arity) h env = error "Can't instantiate constructors... yet..."
+instantiate (Let isRec defs body) h env = error "Can't instantiate lets... yet..."
+instantiate (Case e alts) h env = error "Can't instantiate cases... yet..."
+instantiate (Lam _ _) _ _ = error "Must lambda lift program first."
+
+eval state = state : rest
   where
     rest | tiFinal state = []
          | otherwise = eval next
     next = incTiStats (step state)
+
+runProgram prog = hLookup h result
+  where 
+    final = (last . eval . compile) prog
+    result = (head . stack) final
+    h = heap final
