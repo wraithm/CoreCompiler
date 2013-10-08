@@ -71,14 +71,14 @@ appStep state@(TiState s _ _ _ _) a1 _ = state { stack = a1 : s }
 
 cStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 cStep (TiState s d h g st) name args body = TiState s' d h' g st
-    where
+  where
     s' = resultAddr : drop (length args + 1) s
     (h', resultAddr) = instantiate body h env
     env = argBindings <> g
     argBindings = zip args (getArgs h s)
 
 getArgs h (s:st) = map getArg st
-    where getArg addr = let (NApp _ arg) = hLookup h addr in arg
+  where getArg addr = let (NApp _ arg) = hLookup h addr in arg
 
 instantiate :: CoreExpr -> TiHeap -> [(Name, Addr)] -> (TiHeap, Addr)
 instantiate (Num n) h _ = alloc h (NNum n)
