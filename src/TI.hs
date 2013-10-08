@@ -1,4 +1,4 @@
-module TiState where
+module TI where
 
 import Data.List (mapAccumL)
 import Data.Monoid ((<>))
@@ -81,15 +81,25 @@ getArgs h (s:st) = map getArg st
     where getArg addr = let (NApp _ arg) = hLookup h addr in arg
 
 instantiate :: CoreExpr -> TiHeap -> [(Name, Addr)] -> (TiHeap, Addr)
-instantiate (Num n) h env = alloc h (NNum n)
+instantiate (Num n) h _ = alloc h (NNum n)
 instantiate (App e1 e2) h env = alloc h2 (NApp a1 a2)
   where
     (h1, a1) = instantiate e1 h env
     (h2, a2) = instantiate e2 h1 env
 instantiate (Var v) h env = (h, findWithDefault err v env)
-    where err = error $ "Undefined name " ++ show v ++ " in " ++ show env
+  where err = error $ "Undefined name " ++ show v ++ " in " ++ show env
+instantiate (Let False defs body) h env = instantiate body h'' env''
+  where
+    (h'', env'') = foldl (\a d -> addDef a d) (h,env) defs
+    addDef (ah, env') (name, e) = (h',(name,addr):env')
+      where (h',addr) = instantiate e ah env
+-- TODO letrec is not implemented.
+instantiate (Let True defs body) h env = instantiate body h'' env''
+  where
+    (h'', env'') = foldl (\a d -> addDef a d) (h,env) defs
+    addDef (ah, env') (name, e) = (h',(name,addr):env')
+      where (h',addr) = instantiate e ah env
 instantiate (Constr tag arity) h env = error "Can't instantiate constructors... yet..."
-instantiate (Let isRec defs body) h env = error "Can't instantiate lets... yet..."
 instantiate (Case e alts) h env = error "Can't instantiate cases... yet..."
 instantiate (Lam _ _) _ _ = error "Must lambda lift program first."
 

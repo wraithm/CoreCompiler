@@ -1,0 +1,18 @@
+-- Making a pair combinator
+pair x y f = f x y;
+fst p = p K;
+snd p = p K1;
+
+{- Test of letrec
+f x y = letrec
+    a = pair x b;
+    b = pair y a
+in fst (snd (snd (snd a)));
+-}
+
+-- Lambda lift test
+true = \x y. x;
+false = \x y. y;
+if = \p x y. p x y;
+
+main = if (fst (pair true false)) 5 2;

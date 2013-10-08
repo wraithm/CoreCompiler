@@ -4,16 +4,28 @@ import Control.Applicative ((<$>))
 
 import Text.Parsec
 import Text.Parsec.Combinator
-import Text.Parsec.String (Parser)
+import Text.Parsec.String (Parser, parseFromFile)
 import qualified Text.Parsec.Expr as E
 
 import Lexer
 import AST
 
 parseProgram :: String -> CoreProgram
-parseProgram t = case parse (allOf (many1 pDefn)) "" t of
+parseProgram t = case parse pProg "" t of
     Left err -> error $ show err
     Right defs -> defs
+
+parseProgramFromFile :: FilePath -> IO CoreProgram
+parseProgramFromFile fp = do
+    result <- parseFromFile pProg fp 
+    case result of
+        Left err -> do
+            print err
+            error $ "Failed to parse " ++ show fp
+        Right defs -> return defs
+
+pProg :: Parser CoreProgram
+pProg = allOf (many1 pDefn)
 
 pDefn :: Parser CoreDefn
 pDefn = do
