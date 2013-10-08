@@ -6,6 +6,9 @@ import AST
 import Heap
 import CorePrelude
 
+-- Testing
+import Parser
+
 data GmState = GmState
     { code  :: GmCode
     , stack :: GmStack
@@ -26,14 +29,17 @@ incStats s = s { stats = (stats s) + 1 }
 data Node = NNum Int
     | NApp Addr Addr
     | NGlobal Int GmCode
-    deriving Show
+    | NInd Addr
+    deriving (Show, Eq)
 
 data Instruction = Unwind
     | Mkap
     | PushGlobal Name
     | PushInt Int
     | Push Int
+    | Pop Int
     | Slide Int
+    | Update Int
     deriving (Show, Eq)
 
 putCode :: GmCode -> GmState -> GmState
@@ -62,7 +68,9 @@ dispatch Mkap = mkap
 dispatch (PushGlobal n) = pushGlobal n
 dispatch (PushInt n) = pushInt n
 dispatch (Push n) = push n
+dispatch (Pop n) = pop n
 dispatch (Slide n) = slide n
+dispatch (Update n) = update n
 
 unwind :: GmState -> GmState
 unwind s = newState (hLookup h a)
@@ -74,6 +82,7 @@ unwind s = newState (hLookup h a)
     newState (NGlobal n c)
         | length as < n = error "Unwinding stack with too few arguments."
         | otherwise = putCode c s
+    newState (NInd a1) = putCode [Unwind] (putStack (a1:as) s)
 
 mkap :: GmState -> GmState
 mkap s = s { heap = h', stack = a:as' }
@@ -88,8 +97,10 @@ pushGlobal n s = putStack (a : stack s) s
     err = error $ "Undeclared global " ++ n
     
 pushInt :: Int -> GmState -> GmState
-pushInt n s = s { heap = h', stack = a : stack s }
-  where (h', a) = alloc (heap s) (NNum n)
+pushInt n s = case lookup (show n) (globals s) of
+    Nothing -> s { globals = (show n, a) : globals s, heap = h, stack = a : stack s }
+      where (h, a) = alloc (heap s) (NNum n)
+    Just a -> putStack (a : stack s) s
 
 push :: Int -> GmState -> GmState
 push n s = putStack (a:as) s
@@ -98,9 +109,21 @@ push n s = putStack (a:as) s
     a = getArg (hLookup (heap s) (as !! (n + 1)))
     getArg (NApp _ a2) = a2
 
+pop :: Int -> GmState -> GmState
+pop n s = putStack (drop n (stack s)) s
+
 slide :: Int -> GmState -> GmState
 slide n s = putStack (a : drop n as) s
   where (a:as) = stack s
+
+update :: Int -> GmState -> GmState
+update n s = s { stack = newStack , heap = h }
+  where
+    (a:as) = stack s
+    (h, an') = alloc (heap s) (NInd a)
+    newStack = case splitAt n as of
+        (xs,_:ys) -> xs ++ an' : ys
+        (xs,[]) -> xs ++ [an']
 
 compile prog = GmState
     { code = [PushGlobal "main", Unwind]
@@ -133,8 +156,11 @@ type GmEnvironment = [(Name, Int)]
 compileR :: GmCompiler
 compileR e env = 
     compileC e env ++ 
-    [ Slide (length env + 1)
+    [ Update d
+    , Pop d
     , Unwind ]
+  where
+    d = length env
 
 compileC :: GmCompiler
 compileC (Var x) env
