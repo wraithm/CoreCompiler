@@ -38,7 +38,7 @@ buildInitialHeap = mapAccumL allocateComb emptyHeap
 
 allocateComb :: TiHeap -> CoreDefn -> (TiHeap, (Name,Addr))
 allocateComb heap (name, args, body) = (heap', (name,addr))
-    where (heap', addr) = alloc heap (NComb name args body)
+  where (heap', addr) = alloc heap (NComb name args body)
 
 compile program = TiState
     { stack = [addrOfMain]
