@@ -73,13 +73,18 @@ unwind :: GmState -> GmState
 unwind s = newState (hLookup h a)
   where
     h = heap s
-    (a:as) = stack s
+    st = stack s
+    (a:as) = st
     newState (NNum _) = s
     newState (NApp a1 _) = putCode [Unwind] (putStack (a1:a:as) s)
+    newState (NInd a1) = putCode [Unwind] (putStack (a1:as) s)
     newState (NGlobal n c)
         | length as < n = error "Unwinding stack with too few arguments."
-        | otherwise = putCode c s
-    newState (NInd a1) = putCode [Unwind] (putStack (a1:as) s)
+        | otherwise = putCode c (putStack rearranged s)
+          where
+            rearranged = take n as' ++ drop n st
+            as' = map (getArg . hLookup h) as
+            getArg (NApp _ a2) = a2
 
 mkap :: GmState -> GmState
 mkap s = s { heap = h', stack = a:as' }
@@ -105,8 +110,7 @@ push :: Int -> GmState -> GmState
 push n s = putStack (a:as) s
   where 
     as = stack s
-    a = getArg (hLookup (heap s) (as !! (n + 1)))
-    getArg (NApp _ a2) = a2
+    a = as !! n
 
 pop :: Int -> GmState -> GmState
 pop n s = putStack (drop n (stack s)) s
