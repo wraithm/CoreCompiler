@@ -6,9 +6,6 @@ import Data.List (mapAccumL)
 
 import AST
 
--- for testing only
-import Parser
-
 -- Annotated Expr
 
 type AnnExpr a b = (b, AnnExpr' a b)
