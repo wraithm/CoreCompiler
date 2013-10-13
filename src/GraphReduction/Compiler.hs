@@ -8,6 +8,8 @@ import Util.Heap
 
 import GraphReduction.Machine
 
+-- Compile for the GR Machine
+
 runProgram :: CoreProgram -> Node
 runProgram prog = hLookup h result
   where 
@@ -30,6 +32,9 @@ buildInitialHeap prog = mapAccumL allocateComb emptyHeap compiled
     compiled = map compileComb (preludeDefs ++ prog) ++ compiledPrimitives
 
 compiledPrimitives = []
+
+
+-- The compiler
 
 type GmCompiledC = (Name, Int, GmCode)
 
