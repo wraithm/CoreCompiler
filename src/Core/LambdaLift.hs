@@ -1,10 +1,10 @@
-module LambdaLift where
+module Core.LambdaLift where
 
 import Data.Set (Set,(\\))
 import qualified Data.Set as S
 import Data.List (mapAccumL)
 
-import AST
+import Core.AST
 
 -- Annotated Expr
 

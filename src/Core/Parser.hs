@@ -1,4 +1,4 @@
-module Parser where
+module Core.Parser where
 
 import Control.Applicative ((<$>))
 
@@ -7,8 +7,8 @@ import Text.Parsec.Combinator
 import Text.Parsec.String (Parser, parseFromFile)
 import qualified Text.Parsec.Expr as E
 
-import Lexer
-import AST
+import Core.Lexer
+import Core.AST
 
 parseProgram :: String -> CoreProgram
 parseProgram t = case parse pProg "" t of

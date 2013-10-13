@@ -1,4 +1,4 @@
-module Heap where
+module Util.Heap where
 
 import qualified Data.Map.Lazy as M
 import Data.Maybe (fromMaybe)

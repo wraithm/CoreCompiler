@@ -1,11 +1,12 @@
-module GrCompiler where
+module GraphReduction.Compiler where
 
 import Data.List (mapAccumL)
 
-import AST
-import CorePrelude
-import GrMachine
-import Heap
+import Core.AST
+import Core.Prelude
+import Util.Heap
+
+import GraphReduction.Machine
 
 runProgram :: CoreProgram -> Node
 runProgram prog = hLookup h result

@@ -1,4 +1,4 @@
-module Lexer where
+module Core.Lexer where
 
 import Text.Parsec
 import Text.Parsec.Char

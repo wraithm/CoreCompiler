@@ -1,10 +1,10 @@
-module GrMachine where
+module GraphReduction.Machine where
 
 import Data.List (mapAccumL)
 
-import AST
-import Heap
-import CorePrelude
+import Core.AST
+import Core.Prelude
+import Util.Heap
 
 data GmState = GmState
     { code  :: GmCode

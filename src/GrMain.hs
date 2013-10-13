@@ -2,9 +2,9 @@ module TiMain where
 
 import qualified System.Environment as S
 
-import GrCompiler (runProgram)
-import LambdaLift (lambdaLift)
-import Parser (parseProgramFromFile)
+import GraphReduction.Compiler (runProgram)
+import Core.LambdaLift (lambdaLift)
+import Core.Parser (parseProgramFromFile)
 
 -- testProg = "main = let x = if false 3 5; y = 2 in x; true = \\x y. x; false = \\x y. y; if = \\p x y.  p x y;"
 -- prog = parseProgram testProg

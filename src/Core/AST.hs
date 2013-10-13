@@ -1,4 +1,4 @@
-module AST where
+module Core.AST where
 
 import Data.Maybe (fromMaybe)
 

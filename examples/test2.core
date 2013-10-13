@@ -1,0 +1,6 @@
+-- Lambda lift test
+true x y = x;
+false x y = y;
+if p x y = p x y;
+
+main = twice twice I 3;

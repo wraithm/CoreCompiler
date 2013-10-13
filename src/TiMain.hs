@@ -2,9 +2,10 @@ module TiMain where
 
 import qualified System.Environment as S
 
-import TI
-import Parser
-import LambdaLift
+import Core.Parser
+import Core.LambdaLift
+
+import TemplateInstantiation.TI
 
 -- testProg = "main = let x = if false 3 5; y = 2 in x; true = \\x y. x; false = \\x y. y; if = \\p x y.  p x y;"
 -- prog = parseProgram testProg

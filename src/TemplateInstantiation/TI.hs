@@ -1,11 +1,11 @@
-module TI where
+module TemplateInstantiation.TI where
 
 import Data.List (mapAccumL)
 import Data.Monoid ((<>))
 
-import AST
-import Heap
-import CorePrelude
+import Core.AST
+import Core.Prelude
+import Util.Heap
 
 -- This is a simple template instantiation graph reducer
 

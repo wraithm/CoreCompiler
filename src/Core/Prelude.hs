@@ -1,6 +1,6 @@
-module CorePrelude where
+module Core.Prelude where
 
-import AST
+import Core.AST
 
 preludeDefs :: CoreProgram
 preludeDefs =
