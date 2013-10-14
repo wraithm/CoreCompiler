@@ -29,7 +29,7 @@ prettyExp (Let isRec defs e) =
     text "in" <+> prettyExp e
 prettyExp (Case e alts) = 
     text "case" <+> prettyExp e <+> text "of" <+> nest 1 (prettyAlts alts)
-prettyExp (Lam args e) = text "\\" <> spaceSep args <> dot <+> prettyExp e
+prettyExp (Lam args e) = parens $ text "\\" <> spaceSep args <> dot <+> prettyExp e
   where dot = text "."
 
 prettyDefs :: [(Name, CoreExpr)] -> Doc
