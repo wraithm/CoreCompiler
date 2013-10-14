@@ -14,10 +14,10 @@ import TemplateInstantiation.TI
 main :: IO ()
 main = do
     args <- S.getArgs
-    if length args > 0 then do
+    if not (null args) then do
         let file:_ = args
         prog <- parseProgramFromFile file
-        (putStrLn . show . runProgram . lambdaLift) prog
+        (print . runProgram . lambdaLift) prog
     else do
         putStrLn "Need a file to parse."
         return ()

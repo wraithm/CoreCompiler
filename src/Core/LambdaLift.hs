@@ -96,7 +96,8 @@ abstractE :: AnnExpr Name (Set Name) -> CoreExpr
 abstractE (_, AVar x) = Var x
 abstractE (_, ANum n) = Num n
 abstractE (_, AApp e1 e2) = App (abstractE e1) (abstractE e2)
-abstractE (_, ALet isRec defs body) = Let isRec [ (name, abstractE body) | (name, body) <- defs ] (abstractE body)
+abstractE (_, ALet isRec defs body) 
+  = Let isRec [ (name, abstractE body) | (name, body) <- defs ] (abstractE body)
 abstractE (free, ALam args body) = foldl App c (map Var fvs)
   where
     fvs = S.toList free
@@ -132,9 +133,8 @@ renameE env ns (Lam args body) = (ns'', Lam args' body')
 renameE env ns (Let isRec defs body) = (ns''', Let isRec (zip binders' rhss') body')
   where
     (ns', body') = renameE bodyenv ns body
+    (ns'', binders', env') = newNames ns' (bindersOf defs)
     bodyenv = env' ++ env
-    binders = bindersOf defs
-    (ns'', binders', env') = newNames ns' binders
     (ns''', rhss') = mapAccumL (renameE rhsEnv) ns'' (rhssOf defs)
     rhsEnv 
         | isRec = bodyenv
@@ -143,8 +143,9 @@ renameE _ _ (Case _ _) = error "Deal with cases later!"
 renameE _ _ (Constr _ _) = error "Deal with constructors later!"
 
 collectCs :: CoreProgram -> CoreProgram
-collectCs prog = concatMap collectOne prog
-  where collectOne (name, args, rhs) = let (cs, rhs') = collectCsE rhs in (name, args, rhs') : cs
+collectCs = concatMap collectOne
+  where collectOne (name, args, rhs) = (name, args, rhs') : cs
+          where (cs, rhs') = collectCsE rhs 
 
 collectCsE :: CoreExpr -> ([CoreDefn], CoreExpr)
 collectCsE (Num n) = ([], Num n)
@@ -163,14 +164,17 @@ collectCsE (Case e alts) = (cse ++ csalts, Case e' alts')
     collectCsAlt cs (t, args, rhs) = (cs ++ csRhs, (t, args, rhs'))
       where (csRhs, rhs') = collectCsE rhs
 collectCsE (Let isRec defs body) =
-    (rhssCs ++ bodyCs ++ localCs, Let isRec nonCs' body')
+    (rhssCs ++ bodyCs ++ localCs, mkLet isRec nonCs' body')
   where
     isLam (Lam _ _) = True
     isLam _ = False
+    mkLet r d b = if null d then b else Let r d b
+
     (rhssCs, defs') = mapAccumL collectCsDef [] defs
-    collectCsDef cs (name, rhs) = (cs ++ rhsCs, (name, rhs'))
-        where (rhsCs, rhs') = collectCsE rhs
     cs' = [ (name, rhs) | (name, rhs) <- defs', isLam rhs ]
-    nonCs' = [ (name, rhs) | (name, rhs) <- defs, not (isLam rhs) ]
+    nonCs' = [ (name, rhs) | (name, rhs) <- defs', not (isLam rhs) ]
     localCs = [ (name, args, body) | (name, Lam args body) <- cs' ]
     (bodyCs, body') = collectCsE body
+
+collectCsDef cs (name, rhs) = (cs ++ rhsCs, (name, rhs'))
+  where (rhsCs, rhs') = collectCsE rhs

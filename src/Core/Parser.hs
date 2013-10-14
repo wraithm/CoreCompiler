@@ -70,7 +70,7 @@ pAlter = do
     xs <- many identifier
     arrow
     e <- pExpr
-    return $ (i, xs, e)
+    return (i, xs, e)
     <?> "Case"
 
 pLambda :: Parser CoreExpr

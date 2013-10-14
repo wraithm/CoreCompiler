@@ -62,7 +62,7 @@ argOffset n env = [ (x, n + m) | (x, m) <- env ]
 
 compileC :: GmCompiler
 compileC (Var x) env
-    | x `elem` (domain env) = [Push n]
+    | x `elem` domain env = [Push n]
     | otherwise = [PushGlobal x]
   where
     domain xs = [ x | (x, _) <- xs ]

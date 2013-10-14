@@ -31,7 +31,7 @@ data Node = NApp Addr Addr -- Application
 initialDump = TiDump
 
 incTiStats :: TiState -> TiState
-incTiStats state = state { stats = (stats state) + 1 }
+incTiStats state = state { stats = stats state + 1 }
 
 buildInitialHeap :: [CoreDefn] -> (TiHeap, [(Name, Addr)])
 buildInitialHeap = mapAccumL allocateComb emptyHeap
@@ -90,13 +90,13 @@ instantiate (Var v) h env = (h, findWithDefault err v env)
   where err = error $ "Undefined name " ++ show v ++ " in " ++ show env
 instantiate (Let False defs body) h env = instantiate body h'' env''
   where
-    (h'', env'') = foldl (\a d -> addDef a d) (h,env) defs
+    (h'', env'') = foldl addDef (h,env) defs
     addDef (ah, env') (name, e) = (h',(name,addr):env')
       where (h',addr) = instantiate e ah env
 -- TODO letrec is not implemented.
 instantiate (Let True defs body) h env = instantiate body h'' env''
   where
-    (h'', env'') = foldl (\a d -> addDef a d) (h,env) defs
+    (h'', env'') = foldl addDef (h,env) defs
     addDef (ah, env') (name, e) = (h',(name,addr):env')
       where (h',addr) = instantiate e ah env
 instantiate (Constr tag arity) h env = error "Can't instantiate constructors... yet..."

@@ -21,7 +21,7 @@ type GmGlobals = [(Name, Addr)]
 type GmStats = Int
 
 incStats :: GmState -> GmState
-incStats s = s { stats = (stats s) + 1 }
+incStats s = s { stats = stats s + 1 }
 
 data Node = NNum Int
     | NApp Addr Addr
@@ -54,7 +54,7 @@ eval s = s : rest
     next = incStats (step s)
 
 gmFinal :: GmState -> Bool
-gmFinal s = code s == []
+gmFinal = null . code
 
 step :: GmState -> GmState
 step s = dispatch i (putCode is s)
