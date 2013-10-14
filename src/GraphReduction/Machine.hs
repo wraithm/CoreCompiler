@@ -37,6 +37,7 @@ data Instruction = Unwind
     | Pop Int
     | Slide Int
     | Update Int
+    | Alloc Int
     deriving (Show, Eq)
 
 putCode :: GmCode -> GmState -> GmState
@@ -68,6 +69,7 @@ dispatch (Push n) = push n
 dispatch (Pop n) = pop n
 dispatch (Slide n) = slide n
 dispatch (Update n) = update n
+dispatch (Alloc n) = allocNodes n
 
 unwind :: GmState -> GmState
 unwind s = newState (hLookup h a)
@@ -127,3 +129,13 @@ update n s = s { stack = newStack , heap = h }
     newStack = case splitAt n as of
         (xs,_:ys) -> xs ++ an' : ys
         (xs,[]) -> xs ++ [an']
+
+allocNodes :: Int -> GmState -> GmState
+allocNodes n s = s { stack = newaddrs ++ stack s, heap = hp }
+  where
+    (hp, newaddrs) = allocNodes' n (heap s) 
+    allocNodes' 0 h = (h, [])
+    allocNodes' n h = (h'', a:as)
+      where
+        (h', as) = allocNodes' (n - 1) h
+        (h'', a) = alloc h' (NInd hNull)

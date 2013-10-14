@@ -3,4 +3,4 @@ true x y = x;
 false x y = y;
 if p x y = p x y;
 
-main = twice twice I 3;
+main = let x = 3 in twice twice I x;

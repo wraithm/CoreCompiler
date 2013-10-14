@@ -15,6 +15,7 @@ instance Show a => Show (Heap a) where
     show h = "Heap " ++ show (size h) ++ " " ++ show (objects h)
 
 emptyHeap = Heap 0 [1..] M.empty
+hNull = 0 :: Addr
 
 alloc :: Heap a -> a -> (Heap a, Addr)
 alloc (Heap size (next:free) objs) n = (Heap (size + 1) free objs', next)
