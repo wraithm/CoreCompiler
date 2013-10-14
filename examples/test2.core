@@ -3,4 +3,8 @@ true x y = x;
 false x y = y;
 if p x y = p x y;
 
-main = let x = 3 in twice twice I x;
+equals x y = true;
+
+lettest = let x = 3 in twice twice I x;
+
+main = letrec f = \x. if (equals x 0) 3 (f x) in f 3;

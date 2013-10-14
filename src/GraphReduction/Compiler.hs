@@ -76,6 +76,7 @@ compileC (App e1 e2) env =
 compileC (Let isRec defs e) args
     | isRec = compileLetrec compileC defs e args
     | otherwise = compileLet compileC defs e args
+compileC x env = error $ "Can't compile: " ++ show x ++ " with " ++ show env
 
 compileArgs :: [(Name, CoreExpr)] -> GmEnvironment -> GmEnvironment
 compileArgs defs env = zip (map fst defs) [n-1, n-2 .. 0] ++ argOffset n env

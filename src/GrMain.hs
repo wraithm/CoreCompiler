@@ -1,4 +1,4 @@
-module TiMain where
+module GrMain where
 
 import qualified System.Environment as S
 
