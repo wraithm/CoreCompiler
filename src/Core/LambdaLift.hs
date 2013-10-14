@@ -24,19 +24,6 @@ type AnnDefn a b = (a, AnnExpr a b)
 type AnnAlt a b = (Int, [a], AnnExpr a b)
 type AnnProgram a b = [(Name, [a], AnnExpr a b)]
 
-{-
-instance Show a => Show (AnnExpr a b) where
-    show (ANum n) = show n
-    show (AVar x) = x
-    show (AApp e1 e2) = show e1 ++ " " ++ show e2
-    show (Let True defs inexp) = "let rec " ++ concapMap (\(x,e) -> show x ++ " = " ++ show e ++ "\n") defs ++ "\nin " ++ show inexp
-    show (Let False defs inexp) = "let " ++ concapMap (\(x,e) -> show x ++ " = " ++ show e ++ "\n") defs ++ "\nin " ++ show inexp
-    show (Constr i j) = "Pack " ++ show i ++ " " ++ show j
-    show e
-        | isAtomic = show e
-        | otherwise = "(" ++ show e ++ ")"
--}
-
 type NameSupply = Int
 
 initialNameSupply :: NameSupply
@@ -66,10 +53,11 @@ freeVarsE lv (App e1 e2) = (freeVarsOf e1' `S.union` freeVarsOf e2', AApp e1' e2
   where
     e1' = freeVarsE lv e1
     e2' = freeVarsE lv e2
-freeVarsE lv (Lam args body) = (freeVarsOf body' \\ S.fromList args, ALam args body')
+freeVarsE lv (Lam args body) = (freeVarsOf body' \\ setArgs, ALam args body')
   where
     body' = freeVarsE lv' body
-    lv' = lv `S.union` S.fromList args
+    lv' = lv `S.union` setArgs
+    setArgs = S.fromList args
 freeVarsE lv (Let isRec defs body) = (defsFree `S.union` bodyFree, ALet isRec defs' body')
   where
     binders = S.fromList $ bindersOf defs
@@ -83,11 +71,13 @@ freeVarsE lv (Let isRec defs body) = (defsFree `S.union` bodyFree, ALet isRec de
         | otherwise = freeInVals
     body' = freeVarsE body_lv body
     bodyFree = freeVarsOf body' \\ binders
-freeVarsE lv (Case e alts) = error "Deal with cases later!"
+freeVarsE lv (Case e alts) = (freeVarsOf e' `S.union` (S.unions $ map freeVarsOfAlt alts'), ACase e' alts')
+  where
+    e' = freeVarsE lv e
+    alts' = map (freeVarsAlt lv) alts
+    freeVarsAlt lv (i, args, e) = (i, args, freeVarsE lv e)
+    freeVarsOfAlt (_, args, rhs) = freeVarsOf rhs \\ S.fromList args
 freeVarsE lv (Constr _ _) = error "Deal with constructors later!"
-
-freeVarsOfAlt :: AnnAlt Name (Set Name) -> Set Name
-freeVarsOfAlt (_, args, rhs) = freeVarsOf rhs \\ S.fromList args
 
 abstract :: AnnProgram Name (Set Name) -> CoreProgram
 abstract prog = [ (name, args, abstractE rhs) | (name, args, rhs) <- prog ]
@@ -96,14 +86,17 @@ abstractE :: AnnExpr Name (Set Name) -> CoreExpr
 abstractE (_, AVar x) = Var x
 abstractE (_, ANum n) = Num n
 abstractE (_, AApp e1 e2) = App (abstractE e1) (abstractE e2)
-abstractE (_, ALet isRec defs body) 
-  = Let isRec [ (name, abstractE body) | (name, body) <- defs ] (abstractE body)
+abstractE (_, ALet isRec defs body) = 
+    Let isRec [ (name, abstractE body) | (name, body) <- defs ] (abstractE body)
+abstractE (_, ACase e alts) = Case (abstractE e) (abstractAlts alts)
+  where
+    abstractAlts = map abstractAlt
+    abstractAlt (i, args, alte) = (i, args, abstractE alte)
 abstractE (free, ALam args body) = foldl App c (map Var fvs)
   where
     fvs = S.toList free
     c = Let False [("c",cRhs)] (Var "c")
     cRhs = Lam (fvs ++ args) (abstractE body)
-abstractE (_, ACase _ _) = error "Deal with cases later!"
 abstractE (_, AConstr _ _) = error "Deal with constructors later!"
 
 rename :: CoreProgram -> CoreProgram
@@ -139,8 +132,15 @@ renameE env ns (Let isRec defs body) = (ns''', Let isRec (zip binders' rhss') bo
     rhsEnv 
         | isRec = bodyenv
         | otherwise = env
-renameE _ _ (Case _ _) = error "Deal with cases later!"
+renameE env ns (Case e alts) = (ns'', Case e' alts')
+  where
+    (ns', e') = renameE env ns e
+    (ns'', alts') = mapAccumL (renameAlts env) ns' alts
 renameE _ _ (Constr _ _) = error "Deal with constructors later!"
+
+renameAlts :: [(Name, Name)] -> NameSupply -> CoreAlt -> (NameSupply, CoreAlt)
+renameAlts env ns (i, args, e) = (ns', (i, args, e'))
+  where (ns', e') = renameE env ns e
 
 collectCs :: CoreProgram -> CoreProgram
 collectCs = concatMap collectOne
@@ -176,5 +176,5 @@ collectCsE (Let isRec defs body) =
     localCs = [ (name, args, body) | (name, Lam args body) <- cs' ]
     (bodyCs, body') = collectCsE body
 
-collectCsDef cs (name, rhs) = (cs ++ rhsCs, (name, rhs'))
-  where (rhsCs, rhs') = collectCsE rhs
+    collectCsDef cs (name, rhs) = (cs ++ rhsCs, (name, rhs'))
+      where (rhsCs, rhs') = collectCsE rhs

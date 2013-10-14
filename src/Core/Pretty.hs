@@ -28,7 +28,7 @@ prettyExp (Let isRec defs e) =
     nest 1 (prettyDefs defs) $$
     text "in" <+> prettyExp e
 prettyExp (Case e alts) = 
-    text "case" <+> prettyExp e <+> text "of" <> nest 1 (prettyAlts alts)
+    text "case" <+> prettyExp e <+> text "of" <+> nest 1 (prettyAlts alts)
 prettyExp (Lam args e) = text "\\" <> spaceSep args <> dot <+> prettyExp e
   where dot = text "."
 
