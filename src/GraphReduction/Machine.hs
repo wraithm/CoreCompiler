@@ -9,6 +9,7 @@ import Util.Heap
 data GmState = GmState
     { code  :: GmCode
     , stack :: GmStack
+    , dump  :: GmDump
     , heap  :: GmHeap
     , globals :: GmGlobals
     , stats :: GmStats
@@ -16,6 +17,7 @@ data GmState = GmState
 
 type GmCode = [Instruction]
 type GmStack = [Addr]
+type GmDump = [(GmCode, GmStack)]
 type GmHeap = Heap Node
 type GmGlobals = [(Name, Addr)]
 type GmStats = Int
@@ -27,9 +29,16 @@ data Node = NNum Int
     | NApp Addr Addr
     | NGlobal Int GmCode
     | NInd Addr
-    deriving (Show, Eq)
+    deriving Eq
 
-data Instruction = Unwind
+instance Show Node where
+    show (NNum i) = show i
+    show (NApp a1 a2) = "@" ++ show a1 ++ " " ++ show a2
+    show (NGlobal a c) = "g" ++ show a ++ " " ++ show c
+    show (NInd a) = "p" ++ show a
+
+data Instruction 
+    = Unwind
     | Mkap
     | PushGlobal Name
     | PushInt Int
@@ -38,6 +47,11 @@ data Instruction = Unwind
     | Slide Int
     | Update Int
     | Alloc Int
+
+    | Eval
+    | Add | Sub | Mul | Div | Neg
+    | Eq | Ne | Lt | Le | Gt | Ge
+    | Cond GmCode GmCode
     deriving (Show, Eq)
 
 putCode :: GmCode -> GmState -> GmState
@@ -45,6 +59,9 @@ putCode i s = s { code = i }
 
 putStack :: GmStack -> GmState -> GmState
 putStack st s = s { stack = st }
+
+putDump :: GmDump -> GmState -> GmState
+putDump d s = s { dump = d }
 
 eval :: GmState -> [GmState]
 eval s = s : rest
@@ -71,13 +88,73 @@ dispatch (Slide n) = slide n
 dispatch (Update n) = update n
 dispatch (Alloc n) = allocNodes n
 
+dispatch Eval = newstate
+  where newstate s = s { code = [Unwind], stack = [a], dump = (code s,st):dump s }
+            where a:st = stack s
+
+dispatch Add = binaryArithmetic (+)
+dispatch Sub = binaryArithmetic (-)
+dispatch Mul = binaryArithmetic (*)
+dispatch Div = binaryArithmetic div
+dispatch Neg = unaryArithmetic negate
+dispatch Eq = comparison (==)
+dispatch Ne = comparison (/=)
+dispatch Lt = comparison (<)
+dispatch Le = comparison (<=)
+dispatch Gt = comparison (>)
+dispatch Ge = comparison (>=)
+
+dispatch (Cond i1 i2) = cond i1 i2
+
+boxInt :: Int -> GmState -> GmState
+boxInt n s = s { stack = a:stack s, heap = h }
+  where (h, a) = alloc (heap s) (NNum n)
+
+unboxInt :: Addr -> GmState -> Int
+unboxInt a s = ub (hLookup (heap s) a)
+  where
+    ub (NNum i) = i
+    ub _ = error "Cannot unbox non-integer."
+
+boxBoolean b s = s { stack = a:stack s, heap = h }
+  where
+    (h, a) = alloc (heap s) (NNum b')
+    b' | b = 1 | otherwise = 0
+
+unaryPrimitive :: (b -> GmState -> GmState)  -- boxing function
+               -> (Addr -> GmState -> a)     -- unboxing function
+               -> (a -> b)                   -- operator
+               -> (GmState -> GmState)       -- state transition
+unaryPrimitive box unbox  op s = box (op (unbox a s)) (putStack as s)
+  where a:as = stack s
+
+binaryPrimitive :: (b -> GmState -> GmState)  -- boxing function
+                -> (Addr -> GmState -> a)     -- unboxing function
+                -> (a -> a -> b)              -- operator
+                -> (GmState -> GmState)       -- state transition
+binaryPrimitive box unbox op s = box (op (unbox a0 s) (unbox a1 s)) (putStack as s)
+  where a0:a1:as = stack s
+
+unaryArithmetic :: (Int -> Int) -> (GmState -> GmState)
+unaryArithmetic = unaryPrimitive boxInt unboxInt
+
+binaryArithmetic :: (Int -> Int -> Int) -> (GmState -> GmState)
+binaryArithmetic = binaryPrimitive boxInt unboxInt
+
+comparison :: (Int -> Int -> Bool) -> GmState -> GmState
+comparison = binaryPrimitive boxBoolean unboxInt
+
 unwind :: GmState -> GmState
 unwind s = newState (hLookup h a)
   where
     h = heap s
     st = stack s
     (a:as) = st
-    newState (NNum _) = s
+    newState (NNum _)
+        | null (dump s) = s
+        | otherwise = s { code = i', stack = a:s', dump = d }
+      where 
+        (i', s'):d = dump s
     newState (NApp a1 _) = putCode [Unwind] (putStack (a1:a:as) s)
     newState (NInd a1) = putCode [Unwind] (putStack (a1:as) s)
     newState (NGlobal n c)
@@ -139,3 +216,12 @@ allocNodes n s = s { stack = newaddrs ++ stack s, heap = hp }
       where
         (h', as) = allocNodes' (n - 1) h
         (h'', a) = alloc h' (NInd hNull)
+
+cond :: GmCode -> GmCode -> GmState -> GmState
+cond i1 i2 s = s { code = branchCode ++ code s, stack = st }
+  where
+    a:st = stack s
+    NNum n = hLookup (heap s) a 
+    branchCode
+        | n == 1 = i1
+        | n == 0 = i2

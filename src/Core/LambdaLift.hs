@@ -71,7 +71,7 @@ freeVarsE lv (Let isRec defs body) = (defsFree `S.union` bodyFree, ALet isRec de
         | otherwise = freeInVals
     body' = freeVarsE body_lv body
     bodyFree = freeVarsOf body' \\ binders
-freeVarsE lv (Case e alts) = (freeVarsOf e' `S.union` (S.unions $ map freeVarsOfAlt alts'), ACase e' alts')
+freeVarsE lv (Case e alts) = (freeVarsOf e' `S.union` S.unions (map freeVarsOfAlt alts'), ACase e' alts')
   where
     e' = freeVarsE lv e
     alts' = map (freeVarsAlt lv) alts

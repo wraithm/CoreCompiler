@@ -123,6 +123,7 @@ pTerm = E.buildExpressionParser table pFactor <?> "term"
   where infixOp x = E.Infix (reservedOp x >> return (\e1 e2 -> App (App (Var x) e1) e2))
         table = 
             [ [ infixOp "*" E.AssocLeft 
+              , infixOp "/" E.AssocNone
               ]
             , [ infixOp "+" E.AssocLeft
               , infixOp "-" E.AssocLeft

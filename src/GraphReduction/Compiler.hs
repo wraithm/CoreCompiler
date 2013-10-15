@@ -20,6 +20,7 @@ runProgram prog = hLookup h result
 compile prog = GmState
     { code = [PushGlobal "main", Unwind]
     , stack = []
+    , dump = []
     , heap = h
     , globals = g
     , stats = 0 }
@@ -31,7 +32,21 @@ buildInitialHeap prog = mapAccumL allocateComb emptyHeap compiled
   where
     compiled = map compileComb (preludeDefs ++ prog) ++ compiledPrimitives
 
-compiledPrimitives = []
+compiledPrimitives = 
+    [ ("+", 2, [Push 1, Eval, Push 1, Eval, Add, Update 2, Pop 2, Unwind])
+    , ("-", 2, [Push 1, Eval, Push 1, Eval, Sub, Update 2, Pop 2, Unwind])
+    , ("*", 2, [Push 1, Eval, Push 1, Eval, Mul, Update 2, Pop 2, Unwind])
+    , ("/", 2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , ("+", 2, [Push 1, Eval, Push 1, Eval, Add, Update 2, Pop 2, Unwind])
+    , ("negate", 1, [Push 0, Eval, Neg, Update 1, Pop 1, Unwind])
+    , ("==", 2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , ("/=", 2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , ("<",  2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , ("<=", 2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , (">",  2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , (">=", 2, [Push 1, Eval, Push 1, Eval, Div, Update 2, Pop 2, Unwind])
+    , ("if", 3, [Push 0, Eval, Cond [Push 1] [Push 2], Update 3, Pop 3, Unwind])
+    ]
 
 
 -- The compiler
