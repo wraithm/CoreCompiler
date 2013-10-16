@@ -98,19 +98,21 @@ compileArgs defs env = zip (map fst defs) [n-1, n-2 .. 0] ++ argOffset n env
   where n = length defs
 
 compileLet :: GmCompiler -> [(Name, CoreExpr)] -> GmCompiler
-compileLet comp defs e env
-  = compileLet' defs env ++ comp e env' ++ [Slide (length defs)]
+compileLet comp defs e env =
+    compileLet' defs env ++ comp e env' ++ [Slide (length defs)]
   where
     env' = compileArgs defs env
     compileLet' [] _ = []
     compileLet' ((_, expr):defs) env
       = compileC expr env ++ compileLet' defs (argOffset 1 env)
 
-compileLetrec comp defs e env 
-  = [Alloc n] ++ compileLetrec' defs env 1 ++ comp e env' ++ [Slide n]
+compileLetrec comp defs e env =
+    [Alloc n] ++ compileLetrec' defs env 1 ++ comp e env' ++ [Slide n]
   where
     n = length defs
     env' = compileArgs defs env
     compileLetrec' [] _ _ = []
-    compileLetrec' ((_, expr):defs) env m
-      = compileC expr env ++ [Update (n - m)] ++ compileLetrec' defs (argOffset 1 env) (m + 1)
+    compileLetrec' ((_, expr):defs) env m =
+        compileC expr env ++ 
+        [Update (n - m)] ++ 
+        compileLetrec' defs (argOffset 1 env) (m + 1)
