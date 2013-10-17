@@ -22,7 +22,8 @@ prettyExp :: CoreExpr -> Doc
 prettyExp (Var n) = text n
 prettyExp (Num n) = int n
 prettyExp (Constr i j) = text "Pack" <> braces (int i <> text "," <> int j)
-prettyExp (App e1 e2) = prettyExp e1 <+> prettyExp e2
+prettyExp (App e1 e2) = prettyExp e1 <+> parensIf (isAtomic e2) (prettyExp e2)
+  where parensIf p doc | p = parens doc | otherwise = doc
 prettyExp (Let isRec defs e) = 
     text (if isRec then "letrec" else "let") <+> 
     nest 1 (prettyDefs defs) $$
