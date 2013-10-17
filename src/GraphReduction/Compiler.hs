@@ -102,8 +102,8 @@ compileLet comp defs e env =
   where
     env' = compileArgs defs env
     compileLet' [] _ = []
-    compileLet' ((_, expr):defs) env
-      = compileC expr env ++ compileLet' defs (argOffset 1 env)
+    compileLet' ((_, expr):defs) env = 
+        compileC expr env ++ compileLet' defs (argOffset 1 env)
 
 compileLetrec comp defs e env =
     [Alloc n] ++ compileLetrec' defs env 1 ++ comp e env' ++ [Slide n]
